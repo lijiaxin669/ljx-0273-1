@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock } from 'lucide-react';
 
 interface CountdownTimerProps {
@@ -16,16 +16,30 @@ function getRemaining(deadline: Date) {
 }
 
 export default function CountdownTimer({ deadline }: CountdownTimerProps) {
-  const deadlineDate = new Date(deadline);
-  const [remaining, setRemaining] = useState(getRemaining(deadlineDate));
+  const deadlineMs = new Date(deadline).getTime();
+  const [remaining, setRemaining] = useState(() => getRemaining(new Date(deadlineMs)));
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setRemaining(getRemaining(deadlineDate));
-    const timer = setInterval(() => {
-      setRemaining(getRemaining(deadlineDate));
+    const targetDate = new Date(deadlineMs);
+    setRemaining(getRemaining(targetDate));
+
+    timerRef.current = window.setInterval(() => {
+      const newRemaining = getRemaining(targetDate);
+      setRemaining(newRemaining);
+      if (newRemaining === null && timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }, 1000);
-    return () => clearInterval(timer);
-  }, [deadlineDate]);
+
+    return () => {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [deadlineMs]);
 
   if (!remaining) {
     return (

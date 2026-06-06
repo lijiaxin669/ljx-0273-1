@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 CREATE DATABASE IF NOT EXISTS group_buy DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE group_buy;
 
@@ -9,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `group` (
+CREATE TABLE IF NOT EXISTS `purchase_group` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `leader_id` INT NOT NULL,
   `product_name` VARCHAR(100) NOT NULL,
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS `order` (
   INDEX `idx_group_id` (`group_id`),
   INDEX `idx_member_id` (`member_id`),
   INDEX `idx_status` (`status`),
-  CONSTRAINT `fk_order_group` FOREIGN KEY (`group_id`) REFERENCES `group`(`id`),
+  CONSTRAINT `fk_order_group` FOREIGN KEY (`group_id`) REFERENCES `purchase_group`(`id`),
   CONSTRAINT `fk_order_member` FOREIGN KEY (`member_id`) REFERENCES `user`(`id`)
 ) ENGINE=InnoDB;
 
@@ -52,7 +53,7 @@ INSERT INTO `user` (`phone`, `name`, `role`) VALUES
   ('13800004444', '赵团员', 'member'),
   ('13800005555', '刘团员', 'member');
 
-INSERT INTO `group` (`leader_id`, `product_name`, `description`, `image_url`, `price`, `target_count`, `stock`, `remaining_stock`, `deadline`, `status`) VALUES
+INSERT INTO `purchase_group` (`leader_id`, `product_name`, `description`, `image_url`, `price`, `target_count`, `stock`, `remaining_stock`, `deadline`, `status`) VALUES
   (1, '飞鹤星飞帆3段奶粉', '社区拼团价，正品保障，限时抢购', '', 198.00, 10, 15, 12, DATE_ADD(NOW(), INTERVAL 2 DAY), 'active'),
   (1, '惠氏启赋3段奶粉', '进口品质，拼团更优惠', '', 268.00, 8, 10, 10, DATE_ADD(NOW(), INTERVAL 1 DAY), 'active');
 

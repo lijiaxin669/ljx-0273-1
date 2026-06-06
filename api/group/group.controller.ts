@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Inject } from '@nestjs/common';
 import { GroupService } from './group.service.js';
 import { CreateGroupDto } from './dto/create-group.dto.js';
 import { JoinGroupDto } from './dto/join-group.dto.js';
 
 @Controller('api/groups')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(@Inject(GroupService) private readonly groupService: GroupService) {}
 
   @Post()
   create(@Body() dto: CreateGroupDto) {

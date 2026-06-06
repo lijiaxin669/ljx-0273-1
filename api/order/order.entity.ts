@@ -14,19 +14,26 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'int' })
   groupId: number;
 
-  @Column()
+  @Column({ type: 'int' })
   memberId: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 20 })
   memberPhone: string;
 
-  @Column({ default: 1 })
+  @Column({ type: 'int', default: 1 })
   quantity: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
   totalAmount: number;
 
   @Column({

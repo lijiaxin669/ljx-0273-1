@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Group } from './group.entity.js';
@@ -6,6 +6,7 @@ import { Order } from '../order/order.entity.js';
 import { CreateGroupDto } from './dto/create-group.dto.js';
 import { JoinGroupDto } from './dto/join-group.dto.js';
 import { UserService } from '../user/user.service.js';
+import { OrderService } from '../order/order.service.js';
 import { SmsService } from '../sms/sms.service.js';
 import { PaymentService } from '../payment/payment.service.js';
 
@@ -14,10 +15,13 @@ export class GroupService {
   constructor(
     @InjectRepository(Group)
     private readonly groupRepo: Repository<Group>,
-    @InjectRepository(Order)
-    private readonly orderRepo: Repository<Order>,
+    @Inject(UserService)
     private readonly userService: UserService,
+    @Inject(OrderService)
+    private readonly orderService: OrderService,
+    @Inject(SmsService)
     private readonly smsService: SmsService,
+    @Inject(PaymentService)
     private readonly paymentService: PaymentService,
   ) {}
 
@@ -44,15 +48,10 @@ export class GroupService {
     const groups = await this.groupRepo.find({ where, order: { createdAt: 'DESC' } });
     const result: any[] = [];
     for (const group of groups) {
-      const currentCount = await this.orderRepo.count({
-        where: { groupId: group.id, status: 'pending' },
-      });
-      const paidCount = await this.orderRepo.count({
-        where: { groupId: group.id, status: 'paid' },
-      });
+      const currentCount = await this.orderService.countPendingOrPaid(group.id);
       result.push({
         ...group,
-        currentCount: currentCount + paidCount,
+        currentCount,
       });
     }
     return result;
@@ -83,15 +82,10 @@ export class GroupService {
     });
     const result: any[] = [];
     for (const group of groups) {
-      const currentCount = await this.orderRepo.count({
-        where: { groupId: group.id, status: 'pending' },
-      });
-      const paidCount = await this.orderRepo.count({
-        where: { groupId: group.id, status: 'paid' },
-      });
+      const currentCount = await this.orderService.countPendingOrPaid(group.id);
       result.push({
         ...group,
-        currentCount: currentCount + paidCount,
+        currentCount,
       });
     }
     return result;
@@ -114,8 +108,8 @@ export class GroupService {
     const result = await this.groupRepo
       .createQueryBuilder()
       .update(Group)
-      .set({ remainingStock: () => `remainingStock - ${quantity}` })
-      .where('id = :id AND remainingStock >= :quantity', { id: groupId, quantity })
+      .set({ remainingStock: () => `remaining_stock - ${quantity}` })
+      .where('id = :id AND remaining_stock >= :quantity', { id: groupId, quantity })
       .execute();
 
     if (result.affected === 0) {
@@ -124,15 +118,15 @@ export class GroupService {
 
     const user = await this.userService.findOrCreate(dto.phone, dto.name || '团员');
     const totalAmount = Number(group.price) * quantity;
-    const order = this.orderRepo.create({
+
+    const order = await this.orderService.create({
       groupId: group.id,
       memberId: user.id,
       memberPhone: dto.phone,
       quantity,
       totalAmount,
       status: 'pending',
-    });
-    await this.orderRepo.save(order);
+    } as Partial<Order>);
 
     await this.smsService.sendSms(dto.phone, '占位通知');
 
@@ -187,7 +181,7 @@ export class GroupService {
       for (const order of group.orders) {
         if (order.status === 'pending' || order.status === 'paid') {
           await this.paymentService.refund(order.id, Number(order.totalAmount));
-          await this.orderRepo.update(order.id, { status: 'refunded' });
+          await this.orderService.updateStatus(order.id, 'refunded');
         }
       }
     }
@@ -200,15 +194,13 @@ export class GroupService {
   }
 
   async processPayments(group: Group): Promise<void> {
-    const orders = await this.orderRepo.find({
-      where: { groupId: group.id, status: 'pending' },
-    });
+    const orders = await this.orderService.findByGroupAndStatus(group.id, 'pending');
     for (const order of orders) {
       const result = await this.paymentService.charge(order.id, Number(order.totalAmount));
       if (result.success) {
-        await this.orderRepo.update(order.id, { status: 'paid' });
+        await this.orderService.updateStatus(order.id, 'paid');
       } else {
-        await this.orderRepo.update(order.id, { status: 'payment_failed' });
+        await this.orderService.updateStatus(order.id, 'payment_failed');
         await this.groupRepo.increment({ id: group.id }, 'remainingStock', order.quantity);
       }
     }
@@ -227,12 +219,10 @@ export class GroupService {
   }
 
   async processPaymentFailures(): Promise<number> {
-    const orders = await this.orderRepo.find({
-      where: { status: 'payment_failed' },
-    });
+    const orders = await this.orderService.findByStatus('payment_failed');
     for (const order of orders) {
       await this.groupRepo.increment({ id: order.groupId }, 'remainingStock', order.quantity);
-      await this.orderRepo.update(order.id, { status: 'cancelled' });
+      await this.orderService.updateStatus(order.id, 'cancelled');
     }
     return orders.length;
   }

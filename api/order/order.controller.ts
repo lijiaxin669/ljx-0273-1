@@ -1,9 +1,9 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Inject } from '@nestjs/common';
 import { OrderService } from './order.service.js';
 
 @Controller('api/orders')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(@Inject(OrderService) private readonly orderService: OrderService) {}
 
   @Get()
   findAll(@Query('phone') phone: string) {

@@ -3,11 +3,16 @@ version: "3.8"
 services:
   mysql:
     image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
     environment:
       MYSQL_ROOT_PASSWORD: root123
       MYSQL_DATABASE: group_buy
       MYSQL_USER: app
       MYSQL_PASSWORD: app123
+      LANG: C.UTF-8
     ports:
       - "3306:3306"
     volumes:

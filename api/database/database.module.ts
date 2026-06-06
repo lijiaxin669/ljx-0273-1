@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { User } from '../user/user.entity.js';
 import { Group } from '../group/group.entity.js';
 import { Order } from '../order/order.entity.js';
@@ -15,7 +16,12 @@ import { Order } from '../order/order.entity.js';
         password: process.env.DB_PASSWORD || 'root123',
         database: process.env.DB_DATABASE || 'group_buy',
         entities: [User, Group, Order],
-        synchronize: true,
+        namingStrategy: new SnakeNamingStrategy(),
+        synchronize: false,
+        charset: 'utf8mb4',
+        extra: {
+          charset: 'utf8mb4_unicode_ci',
+        },
       }),
     }),
   ],

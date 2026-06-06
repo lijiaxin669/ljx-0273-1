@@ -5,10 +5,10 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ type: 'varchar', length: 20, unique: true })
   phone: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 50 })
   name: string;
 
   @Column({ type: 'enum', enum: ['leader', 'member'], default: 'member' })
